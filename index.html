@@ -9,14 +9,12 @@
     .container { max-width: 600px; margin: 0 auto; padding: 20px; }
     button { width: 100%; padding: 18px; margin: 12px 0; font-size: 18px; border: none; border-radius: 12px; background: #6200ee; color: white; }
     .card { background: #1e1e1e; padding: 16px; margin: 12px 0; border-radius: 12px; }
-    h1, h2 { text-align: center; }
+    .task { padding: 14px; background: #252525; margin: 8px 0; border-radius: 8px; }
+    .timer { font-size: 48px; text-align: center; margin: 20px 0; }
   </style>
 </head>
 <body>
-  <div class="container" id="app">
-    <h1>Amonguvire</h1>
-    <p>Carregando aplicação...</p>
-  </div>
+  <div class="container" id="app"></div>
 
   <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
@@ -36,12 +34,117 @@
     firebase.initializeApp(firebaseConfig);
     const db = firebase.firestore();
 
-    document.getElementById('app').innerHTML = `
-      <h2>Bem-vindo ao Amonguvire</h2>
-      <button onclick="alert('Em breve: Modo Organizador')">Sou o Organizador</button>
-      <button onclick="alert('Em breve: Entrar na Sala')">Sou Jogador - Entrar na Sala</button>
-      <p style="text-align:center; margin-top:30px; font-size:14px;">Firebase conectado com sucesso!</p>
-    `;
+    let currentGameId = null;
+    let currentPlayerName = "";
+    let currentTask = null;
+    let timerInterval = null;
+    let html5QrCode = null;
+
+    function showHome() {
+      document.getElementById('app').innerHTML = `
+        <h1>QR Task Hunt</h1>
+        <button onclick="startAdminMode()">Sou o Organizador</button>
+        <button onclick="joinPlayerMode()">Sou Jogador</button>
+      `;
+    }
+
+    async function startAdminMode() {
+      currentGameId = "sala-" + Math.floor(100000 + Math.random() * 900000);
+      await db.collection('games').doc(currentGameId).set({
+        name: "Partida Presencial",
+        status: "waiting",
+        tasksPerPlayer: 5,
+        createdAt: new Date()
+      });
+      alert("✅ Sala criada!\nCódigo: " + currentGameId);
+      renderAdminPanel();
+    }
+
+    function joinPlayerMode() {
+      const code = prompt("Digite o código da sala:");
+      if (code) {
+        currentGameId = code;
+        currentPlayerName = prompt("Seu nome:", "Jogador1");
+        renderPlayerTasks();
+      }
+    }
+
+    function renderAdminPanel() {
+      document.getElementById('app').innerHTML = `
+        <h2>Organizador</h2>
+        <p>Sala: <strong>${currentGameId}</strong></p>
+        <button onclick="alert('Funcionalidade de cadastro em desenvolvimento')">Cadastrar Tarefas e QR Codes</button>
+        <button onclick="alert('Partida iniciada para todos!')">Iniciar Partida</button>
+        <button onclick="alert('Partida encerrada. Ranking gerado!')">Encerrar Partida</button>
+        <button onclick="showHome()">Voltar</button>
+      `;
+    }
+
+    function renderPlayerTasks() {
+      document.getElementById('app').innerHTML = `
+        <h2>${currentPlayerName}</h2>
+        <p>Sala: ${currentGameId} | Tarefas: 0/5</p>
+        <div class="card">
+          <div class="task" onclick="selectTask(1)">Biblioteca - 20s</div>
+          <div class="task" onclick="selectTask(2)">Laboratório - 30s</div>
+          <div class="task" onclick="selectTask(3)">Recepção - 25s</div>
+        </div>
+        <button onclick="startScanner()">ESCANEAR QR CODE</button>
+      `;
+    }
+
+    function selectTask(id) {
+      currentTask = { id, name: "Tarefa " + id, duration: 30 };
+      startTaskTimer();
+    }
+
+    function startTaskTimer() {
+      let timeLeft = currentTask.duration;
+      document.getElementById('app').innerHTML = `
+        <h2>${currentTask.name}</h2>
+        <div class="timer" id="timer">${timeLeft}</div>
+        <button onclick="usePenalty()">Não encontrei o QR Code (+10s)</button>
+      `;
+
+      timerInterval = setInterval(() => {
+        timeLeft--;
+        document.getElementById('timer').textContent = timeLeft;
+        if (timeLeft <= 0) {
+          clearInterval(timerInterval);
+          alert("✅ Tarefa concluída!");
+          renderPlayerTasks();
+        }
+      }, 1000);
+    }
+
+    function usePenalty() {
+      if (confirm("Adicionar 10 segundos de penalidade?")) {
+        clearInterval(timerInterval);
+        currentTask.duration += 10;
+        startTaskTimer();
+      }
+    }
+
+    function startScanner() {
+      const html5QrCode = new Html5Qrcode("reader");
+      document.getElementById('app').innerHTML = `<div id="reader" style="width:100%;"></div><button onclick="stopScanner()">Cancelar</button>`;
+
+      html5QrCode.start({ facingMode: "environment" }, {
+        fps: 10,
+        qrbox: { width: 250, height: 250 }
+      }, (decodedText) => {
+        html5QrCode.stop();
+        alert("QR Code lido: " + decodedText + "\nAbrindo tarefa...");
+        selectTask(1);
+      }).catch(err => alert("Erro na câmera: " + err));
+    }
+
+    function stopScanner() {
+      if (html5QrCode) html5QrCode.stop();
+      renderPlayerTasks();
+    }
+
+    showHome();
   </script>
 </body>
 </html>
