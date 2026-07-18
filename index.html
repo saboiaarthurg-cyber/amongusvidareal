@@ -11,7 +11,8 @@
     .card { background: #1e1e1e; padding: 20px; margin: 15px 0; border-radius: 12px; }
     .task { padding: 15px; background: #252525; margin: 10px 0; border-radius: 8px; cursor: pointer; }
     .timer { font-size: 60px; text-align: center; margin: 30px 0; font-weight: bold; color: #ffeb3b; }
-    .status { font-size: 14px; text-align: center; margin: 10px 0; color: #aaa; }
+    .progress { height: 8px; background: #333; margin: 15px 0; border-radius: 4px; overflow: hidden; }
+    .progress-bar { height: 100%; background: #4caf50; width: 0%; transition: width 0.3s; }
   </style>
 </head>
 <body>
@@ -41,11 +42,10 @@
     let timerInterval = null;
     let currentTask = null;
     let html5QrCode = null;
-    let playerTasks = [];
 
     function showHome() {
       document.getElementById('app').innerHTML = `
-        <h1 style="text-align:center; margin-bottom:40px">QR Task Hunt</h1>
+        <h1 style="text-align:center">QR Task Hunt</h1>
         <button onclick="startAsAdmin()">Sou o Organizador</button>
         <button onclick="joinAsPlayer()">Sou Jogador</button>
       `;
@@ -62,7 +62,7 @@
         createdAt: new Date().toISOString()
       });
 
-      alert("Sala criada!\nCódigo: " + currentGameId);
+      alert("✅ Sala criada com sucesso!\nCódigo: " + currentGameId);
       showAdminPanel();
     }
 
@@ -70,108 +70,78 @@
       document.getElementById('app').innerHTML = `
         <h2>Organizador - ${currentGameId}</h2>
         <div class="card">
-          <button onclick="registerTasks()">Cadastrar Tarefas e QR Codes</button>
-          <button onclick="startGame()">Iniciar Partida</button>
-          <button onclick="endGame()">Encerrar Partida</button>
+          <button onclick="alert('Cadastro de tarefas + QR Codes em breve')">Cadastrar Tarefas e QR Codes</button>
+          <button onclick="startGameForPlayers()">Iniciar Partida</button>
+          <button onclick="endGameByAdmin()">Encerrar Partida</button>
         </div>
         <button onclick="showHome()">Voltar</button>
       `;
     }
 
-    function registerTasks() {
-      alert("Em breve: Cadastro completo de tarefas e QR Codes");
+    function startGameForPlayers() {
+      alert("Partida iniciada! Os jogadores receberam suas tarefas.");
     }
 
-    function startGame() {
-      alert("Partida iniciada! Os jogadores já receberam suas tarefas.");
-    }
-
-    function endGame() {
-      if (confirm("Encerrar agora?")) {
-        showRanking();
+    function endGameByAdmin() {
+      if (confirm("Encerrar a partida agora?")) {
+        alert("O organizador encerrou a partida.");
+        showFinalScreen("O organizador encerrou a partida.");
       }
     }
 
-    function showRanking() {
-      document.getElementById('app').innerHTML = `
-        <h2>Partida Encerrada</h2>
-        <div class="card">
-          <h3>Ranking</h3>
-          <p>1º - ${currentPlayerName || "Jogador1"} - 5 tarefas</p>
-          <p>2º - Jogador2 - 4 tarefas</p>
-          <p>3º - Jogador3 - 3 tarefas</p>
-        </div>
-        <button onclick="showHome()">Nova Partida</button>
-      `;
-    }
-
     function joinAsPlayer() {
-      isAdminUser = false;
       const code = prompt("Digite o código da sala:");
       if (!code) return;
       currentGameId = code;
       currentPlayerName = prompt("Seu nome:", "Jogador");
-      if (currentPlayerName) {
-        playerTasks = [
-          {id:1, name:"Biblioteca", location:"Prédio A", status:"pending", duration:20},
-          {id:2, name:"Laboratório", location:"Prédio B", status:"pending", duration:30},
-          {id:3, name:"Recepção", location:"Entrada", status:"pending", duration:25}
-        ];
-        showPlayerPanel();
-      }
+      if (currentPlayerName) showPlayerPanel();
     }
 
     function showPlayerPanel() {
-      let tasksHTML = playerTasks.map(t => `
-        <div class="task" onclick="selectTask(${t.id})">
-          ${t.status === 'completed' ? '✓' : '□'} ${t.name} - ${t.location}
-        </div>
-      `).join('');
-
       document.getElementById('app').innerHTML = `
         <h2>${currentPlayerName}</h2>
-        <p class="status">Sala: ${currentGameId} | Concluídas: 0/${playerTasks.length}</p>
+        <p class="status">Sala: ${currentGameId} | 0/5</p>
         <div class="card">
           <h3>Suas Tarefas</h3>
-          ${tasksHTML}
+          <div class="task" onclick="selectTask('Biblioteca', 20)">Biblioteca</div>
+          <div class="task" onclick="selectTask('Laboratório', 30)">Laboratório</div>
+          <div class="task" onclick="selectTask('Recepção', 25)">Recepção</div>
         </div>
         <button onclick="startQRScanner()">ESCANEAR QR CODE</button>
-        <button onclick="showHome()">Sair</button>
       `;
     }
 
-    function selectTask(id) {
-      currentTask = playerTasks.find(t => t.id === id);
-      if (currentTask) startTaskTimer();
-    }
+    function selectTask(name, duration) {
+      currentTask = {name, duration};
+      let timeLeft = duration;
+      let progress = 100;
 
-    function startTaskTimer() {
-      let timeLeft = currentTask.duration;
       document.getElementById('app').innerHTML = `
         <h2>${currentTask.name}</h2>
-        <p>Local: ${currentTask.location}</p>
         <div class="timer" id="timer">${timeLeft}</div>
+        <div class="progress"><div class="progress-bar" id="progressBar" style="width:100%"></div></div>
         <button onclick="applyPenalty()">Não encontrei o QR Code (+10s)</button>
         <button onclick="showPlayerPanel()">Voltar</button>
       `;
 
       timerInterval = setInterval(() => {
         timeLeft--;
+        progress = (timeLeft / currentTask.duration) * 100;
         document.getElementById('timer').textContent = timeLeft;
+        document.getElementById('progressBar').style.width = progress + '%';
         if (timeLeft <= 0) {
           clearInterval(timerInterval);
-          currentTask.status = 'completed';
-          alert("Tarefa concluída!");
+          alert("✅ Tarefa concluída com sucesso!");
           showPlayerPanel();
         }
       }, 1000);
     }
 
     function applyPenalty() {
-      if (confirm("Adicionar 10 segundos?")) {
+      if (confirm("Aplicar +10 segundos de penalidade?")) {
         clearInterval(timerInterval);
         currentTask.duration += 10;
-        startTaskTimer();
+        selectTask(currentTask.name, currentTask.duration);
       }
     }
 
@@ -183,16 +153,26 @@
       `;
 
       html5QrCode = new Html5Qrcode("reader");
-      html5QrCode.start({facingMode: "environment"}, {fps:10, qrbox:{width:250,height:250}}, (text) => {
+      html5QrCode.start({facingMode: "environment"}, {fps:10, qrbox:{width:250,height:250}}, (decodedText) => {
         html5QrCode.stop();
-        alert("QR lido! Abrindo tarefa...");
-        if (playerTasks.length > 0) selectTask(playerTasks[0].id);
-      }).catch(() => alert("Erro na câmera"));
+        alert("QR Code lido: " + decodedText + "\n\nTarefa identificada!");
+        selectTask(decodedText || "Biblioteca", 30);
+      }).catch(() => alert("Erro ao abrir câmera"));
     }
 
     function stopScanner() {
       if (html5QrCode) html5QrCode.stop();
       showPlayerPanel();
+    }
+
+    function showFinalScreen(message) {
+      document.getElementById('app').innerHTML = `
+        <h2>Partida Finalizada</h2>
+        <div class="card">
+          <p>${message}</p>
+        </div>
+        <button onclick="showHome()">Jogar Novamente</button>
+      `;
     }
 
     showHome();
