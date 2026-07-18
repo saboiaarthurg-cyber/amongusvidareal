@@ -7,10 +7,11 @@
   <style>
     body { font-family: system-ui, sans-serif; background: #121212; color: #fff; margin: 0; padding: 0; }
     .container { max-width: 600px; margin: 0 auto; padding: 20px; }
-    button { width: 100%; padding: 18px; margin: 12px 0; font-size: 18px; border: none; border-radius: 12px; background: #6200ee; color: white; }
-    .card { background: #1e1e1e; padding: 16px; margin: 12px 0; border-radius: 12px; }
-    .task { padding: 14px; background: #252525; margin: 8px 0; border-radius: 8px; }
-    .timer { font-size: 48px; text-align: center; margin: 20px 0; }
+    button { width: 100%; padding: 20px; margin: 12px 0; font-size: 18px; border: none; border-radius: 12px; background: #6200ee; color: white; }
+    .card { background: #1e1e1e; padding: 20px; margin: 15px 0; border-radius: 12px; }
+    .task { padding: 15px; background: #252525; margin: 10px 0; border-radius: 8px; cursor: pointer; }
+    .timer { font-size: 60px; text-align: center; margin: 30px 0; font-weight: bold; color: #ffeb3b; }
+    .status { font-size: 14px; text-align: center; margin: 10px 0; color: #aaa; }
   </style>
 </head>
 <body>
@@ -36,74 +37,122 @@
 
     let currentGameId = null;
     let currentPlayerName = "";
-    let currentTask = null;
+    let isAdminUser = false;
     let timerInterval = null;
+    let currentTask = null;
     let html5QrCode = null;
+    let playerTasks = [];
 
     function showHome() {
       document.getElementById('app').innerHTML = `
-        <h1>QR Task Hunt</h1>
-        <button onclick="startAdminMode()">Sou o Organizador</button>
-        <button onclick="joinPlayerMode()">Sou Jogador</button>
+        <h1 style="text-align:center; margin-bottom:40px">QR Task Hunt</h1>
+        <button onclick="startAsAdmin()">Sou o Organizador</button>
+        <button onclick="joinAsPlayer()">Sou Jogador</button>
       `;
     }
 
-    async function startAdminMode() {
+    async function startAsAdmin() {
+      isAdminUser = true;
       currentGameId = "sala-" + Math.floor(100000 + Math.random() * 900000);
+      
       await db.collection('games').doc(currentGameId).set({
         name: "Partida Presencial",
         status: "waiting",
         tasksPerPlayer: 5,
-        createdAt: new Date()
+        createdAt: new Date().toISOString()
       });
-      alert("✅ Sala criada!\nCódigo: " + currentGameId);
-      renderAdminPanel();
+
+      alert("Sala criada!\nCódigo: " + currentGameId);
+      showAdminPanel();
     }
 
-    function joinPlayerMode() {
-      const code = prompt("Digite o código da sala:");
-      if (code) {
-        currentGameId = code;
-        currentPlayerName = prompt("Seu nome:", "Jogador1");
-        renderPlayerTasks();
-      }
-    }
-
-    function renderAdminPanel() {
+    function showAdminPanel() {
       document.getElementById('app').innerHTML = `
-        <h2>Organizador</h2>
-        <p>Sala: <strong>${currentGameId}</strong></p>
-        <button onclick="alert('Funcionalidade de cadastro em desenvolvimento')">Cadastrar Tarefas e QR Codes</button>
-        <button onclick="alert('Partida iniciada para todos!')">Iniciar Partida</button>
-        <button onclick="alert('Partida encerrada. Ranking gerado!')">Encerrar Partida</button>
+        <h2>Organizador - ${currentGameId}</h2>
+        <div class="card">
+          <button onclick="registerTasks()">Cadastrar Tarefas e QR Codes</button>
+          <button onclick="startGame()">Iniciar Partida</button>
+          <button onclick="endGame()">Encerrar Partida</button>
+        </div>
         <button onclick="showHome()">Voltar</button>
       `;
     }
 
-    function renderPlayerTasks() {
+    function registerTasks() {
+      alert("Em breve: Cadastro completo de tarefas e QR Codes");
+    }
+
+    function startGame() {
+      alert("Partida iniciada! Os jogadores já receberam suas tarefas.");
+    }
+
+    function endGame() {
+      if (confirm("Encerrar agora?")) {
+        showRanking();
+      }
+    }
+
+    function showRanking() {
+      document.getElementById('app').innerHTML = `
+        <h2>Partida Encerrada</h2>
+        <div class="card">
+          <h3>Ranking</h3>
+          <p>1º - ${currentPlayerName || "Jogador1"} - 5 tarefas</p>
+          <p>2º - Jogador2 - 4 tarefas</p>
+          <p>3º - Jogador3 - 3 tarefas</p>
+        </div>
+        <button onclick="showHome()">Nova Partida</button>
+      `;
+    }
+
+    function joinAsPlayer() {
+      isAdminUser = false;
+      const code = prompt("Digite o código da sala:");
+      if (!code) return;
+      currentGameId = code;
+      currentPlayerName = prompt("Seu nome:", "Jogador");
+      if (currentPlayerName) {
+        playerTasks = [
+          {id:1, name:"Biblioteca", location:"Prédio A", status:"pending", duration:20},
+          {id:2, name:"Laboratório", location:"Prédio B", status:"pending", duration:30},
+          {id:3, name:"Recepção", location:"Entrada", status:"pending", duration:25}
+        ];
+        showPlayerPanel();
+      }
+    }
+
+    function showPlayerPanel() {
+      let tasksHTML = playerTasks.map(t => `
+        <div class="task" onclick="selectTask(${t.id})">
+          ${t.status === 'completed' ? '✓' : '□'} ${t.name} - ${t.location}
+        </div>
+      `).join('');
+
       document.getElementById('app').innerHTML = `
         <h2>${currentPlayerName}</h2>
-        <p>Sala: ${currentGameId} | Tarefas: 0/5</p>
+        <p class="status">Sala: ${currentGameId} | Concluídas: 0/${playerTasks.length}</p>
         <div class="card">
-          <div class="task" onclick="selectTask(1)">Biblioteca - 20s</div>
-          <div class="task" onclick="selectTask(2)">Laboratório - 30s</div>
-          <div class="task" onclick="selectTask(3)">Recepção - 25s</div>
+          <h3>Suas Tarefas</h3>
+          ${tasksHTML}
         </div>
-        <button onclick="startScanner()">ESCANEAR QR CODE</button>
+        <button onclick="startQRScanner()">ESCANEAR QR CODE</button>
+        <button onclick="showHome()">Sair</button>
       `;
     }
 
     function selectTask(id) {
-      currentTask = { id, name: "Tarefa " + id, duration: 30 };
-      startTaskTimer();
+      currentTask = playerTasks.find(t => t.id === id);
+      if (currentTask) startTaskTimer();
     }
 
     function startTaskTimer() {
       let timeLeft = currentTask.duration;
       document.getElementById('app').innerHTML = `
         <h2>${currentTask.name}</h2>
+        <p>Local: ${currentTask.location}</p>
         <div class="timer" id="timer">${timeLeft}</div>
-        <button onclick="usePenalty()">Não encontrei o QR Code (+10s)</button>
+        <button onclick="applyPenalty()">Não encontrei o QR Code (+10s)</button>
+        <button onclick="showPlayerPanel()">Voltar</button>
       `;
 
       timerInterval = setInterval(() => {
@@ -111,37 +160,39 @@
         document.getElementById('timer').textContent = timeLeft;
         if (timeLeft <= 0) {
           clearInterval(timerInterval);
-          alert("✅ Tarefa concluída!");
-          renderPlayerTasks();
+          currentTask.status = 'completed';
+          alert("Tarefa concluída!");
+          showPlayerPanel();
         }
       }, 1000);
     }
 
-    function usePenalty() {
-      if (confirm("Adicionar 10 segundos de penalidade?")) {
+    function applyPenalty() {
+      if (confirm("Adicionar 10 segundos?")) {
         clearInterval(timerInterval);
         currentTask.duration += 10;
         startTaskTimer();
       }
     }
 
-    function startScanner() {
-      const html5QrCode = new Html5Qrcode("reader");
-      document.getElementById('app').innerHTML = `<div id="reader" style="width:100%;"></div><button onclick="stopScanner()">Cancelar</button>`;
+    function startQRScanner() {
+      document.getElementById('app').innerHTML = `
+        <h2>Escaneando QR Code...</h2>
+        <div id="reader" style="width:100%;"></div>
+        <button onclick="stopScanner()">Cancelar</button>
+      `;
 
-      html5QrCode.start({ facingMode: "environment" }, {
-        fps: 10,
-        qrbox: { width: 250, height: 250 }
-      }, (decodedText) => {
+      html5QrCode = new Html5Qrcode("reader");
+      html5QrCode.start({facingMode: "environment"}, {fps:10, qrbox:{width:250,height:250}}, (text) => {
         html5QrCode.stop();
-        alert("QR Code lido: " + decodedText + "\nAbrindo tarefa...");
-        selectTask(1);
-      }).catch(err => alert("Erro na câmera: " + err));
+        alert("QR lido! Abrindo tarefa...");
+        if (playerTasks.length > 0) selectTask(playerTasks[0].id);
+      }).catch(() => alert("Erro na câmera"));
     }
 
     function stopScanner() {
       if (html5QrCode) html5QrCode.stop();
-      renderPlayerTasks();
+      showPlayerPanel();
     }
 
     showHome();
