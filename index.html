@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>QR Task Hunt</title>
+  <style>
+    body { font-family: system-ui, sans-serif; background: #121212; color: #fff; margin: 0; padding: 0; }
+    .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+    button { width: 100%; padding: 18px; margin: 12px 0; font-size: 18px; border: none; border-radius: 12px; background: #6200ee; color: white; }
+    .card { background: #1e1e1e; padding: 16px; margin: 12px 0; border-radius: 12px; }
+    h1, h2 { text-align: center; }
+  </style>
+</head>
+<body>
+  <div class="container" id="app">
+    <h1>QR Task Hunt</h1>
+    <p>Carregando aplicação...</p>
+  </div>
+
+  <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore-compat.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+
+  <script>
+    const firebaseConfig = {
+      apiKey: "AIzaSyCN1GHPqTbG_8d4YiSMZ0Wu-BQMWdVeFIA",
+      authDomain: "amonguvire.firebaseapp.com",
+      projectId: "amonguvire",
+      storageBucket: "amonguvire.firebasestorage.app",
+      messagingSenderId: "803409140628",
+      appId: "1:803409140628:web:80fa0e598e06ce438f4d81"
+    };
+
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.firestore();
+
+    document.getElementById('app').innerHTML = `
+      <h2>Bem-vindo ao QR Task Hunt</h2>
+      <button onclick="alert('Em breve: Modo Organizador')">Sou o Organizador</button>
+      <button onclick="alert('Em breve: Entrar na Sala')">Sou Jogador - Entrar na Sala</button>
+      <p style="text-align:center; margin-top:30px; font-size:14px;">Firebase conectado com sucesso!</p>
+    `;
+  </script>
+</body>
+</html>
